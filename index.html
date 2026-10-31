@@ -860,6 +860,82 @@
   }
 
   /* ============ CATEGORY FILTER ============ */
+  .menu-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-bottom: 40px;
+  }
+  .search-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    background: linear-gradient(135deg, rgba(36, 50, 64, 0.65), rgba(45, 62, 74, 0.55));
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: all .25s ease;
+  }
+  .search-bar:focus-within {
+    border-color: var(--gold);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 0 25px rgba(212, 175, 55, 0.25);
+  }
+  .search-icon {
+    width: 22px; height: 22px;
+    color: var(--gold-bright);
+    flex-shrink: 0;
+  }
+  .search-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Tajawal', 'Cairo', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 0;
+  }
+  .search-bar input::placeholder {
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .clear-search {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(212, 175, 55, 0.15);
+    color: var(--gold-bright);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    font-size: 13px; font-weight: 900;
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: all .2s;
+    flex-shrink: 0;
+  }
+  .clear-search:hover {
+    background: rgba(212, 175, 55, 0.3);
+    transform: scale(1.1);
+  }
+  .search-results-count {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-mute);
+    font-weight: 600;
+    min-height: 18px;
+  }
+  .search-results-count b {
+    color: var(--gold-bright);
+    font-weight: 900;
+  }
+  @media (max-width: 600px) {
+    .search-bar { padding: 10px 14px; gap: 8px; }
+    .search-bar input { font-size: 14px; }
+    .search-icon { width: 18px; height: 18px; }
+  }
   .category-filter {
     display: flex;
     flex-wrap: wrap;
@@ -1556,15 +1632,26 @@
       <h2>منتجات <span class="accent">أصلية</span> لكل احتياجاتك</h2>
       <p>تشكيلة متنوعة من الإلكترونيات، الحواسيب، الملابس، الساعات والإكسسوارات بأسعار منافسة وجودة عالية.</p>
     </div>
-    <div class="category-filter" id="categoryFilter">
-      <button class="cat-btn active" data-cat="all">الكل 🛍️</button>
-      <button class="cat-btn" data-cat="إلكترونيات">📱 إلكترونيات</button>
-      <button class="cat-btn" data-cat="حواسيب">💻 حواسيب</button>
-      <button class="cat-btn" data-cat="ملابس">👕 ملابس</button>
-      <button class="cat-btn" data-cat="ساعات">⌚ ساعات</button>
-      <button class="cat-btn" data-cat="إكسسوارات">🎧 إكسسوارات</button>
-      <button class="cat-btn" data-cat="عطور">🌸 عطور</button>
-      <button class="cat-btn" data-cat="أحذية">👟 أحذية</button>
+    <div class="menu-toolbar">
+      <div class="search-bar">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="ابحث عن منتج... (مثال: PUMA، حذاء، hoodie)" autocomplete="off" />
+        <button type="button" id="clearSearchBtn" class="clear-search" aria-label="مسح البحث" style="display:none;">✕</button>
+      </div>
+      <div class="category-filter" id="categoryFilter">
+        <button class="cat-btn active" data-cat="all">الكل 🛍️</button>
+        <button class="cat-btn" data-cat="إلكترونيات">📱 إلكترونيات</button>
+        <button class="cat-btn" data-cat="حواسيب">💻 حواسيب</button>
+        <button class="cat-btn" data-cat="ملابس">👕 ملابس</button>
+        <button class="cat-btn" data-cat="ساعات">⌚ ساعات</button>
+        <button class="cat-btn" data-cat="إكسسوارات">🎧 إكسسوارات</button>
+        <button class="cat-btn" data-cat="عطور">🌸 عطور</button>
+        <button class="cat-btn" data-cat="أحذية">👟 أحذية</button>
+      </div>
+      <div class="search-results-count" id="searchResultsCount"></div>
     </div>
     <div class="menu-grid" id="menuGrid"></div>
   </div>
@@ -1946,6 +2033,32 @@ const CATEGORY_EMOJI = {
   'منزل': '🏠'
 };
 
+/* ---- اكتشاف الفئة تلقائياً من اسم المنتج أو وصفه ----
+   يستعمل عندما لا يوجد عمود categorie في الشيت، أو عندما يكون فارغاً.
+   الكلمات المفتاحية مرنّة وتقبل الإنكليزية والفرنسية والعربية.
+*/
+const CATEGORY_KEYWORDS = {
+  'أحذية':     ['sneaker', 'shoe', 'chaussure', 'puma', 'nike', 'adidas', 'skate', 'boot', 'bottes', 'sandale', 'حذاء', 'صندل', 'بوط', 'naigatro', 'pointure'],
+  'ملابس':      ['hoodie', 't-shirt', 'tshirt', 'tee', 'jean', 'pantalon', 'jacket', 'veste', 'pull', 'sweat', 'dress', 'robe', 'shirt', 'chemise', 'taille', 'كاب', 'تيشيرت', 'بنطلون', 'جاكيت', 'فستان', 'قميص', 'هودي'],
+  'إلكترونيات': ['iphone', 'samsung', 'phone', 'téléphone', 'telephone', 'tablet', 'ipad', 'galaxy', 'casque', 'headphone', 'earbud', 'chargeur', 'cable', 'هاتف', 'هادف', 'سماعة', 'شاحن', 'كابل'],
+  'حواسيب':     ['laptop', 'pc', 'ordinateur', 'macbook', 'hp ', 'dell', 'asus', 'lenovo', 'acer', 'mouse', 'clavier', 'keyboard', 'حاسوب', 'كمبيوتر', 'فأرة', 'لوحة مفاتيح'],
+  'ساعات':      ['watch', 'montre', 'rolex', 'apple watch', 'ساعة', 'ساعات'],
+  'إكسسوارات': ['sac', 'bag', 'wallet', 'portefeuille', 'lunette', 'glasses', 'ceinture', 'belt', 'حقيبة', 'محفظة', 'نظارة', 'حزام', 'anti crevision', 'crevaison'],
+  'عطور':       ['perfume', 'parfum', 'spray', 'deodorant', 'cologne', 'عطر', 'ماء تواليت', 'دودورانت'],
+  'منزل':       ['déco', 'deco', 'meuble', 'cuisine', 'lampe', 'ديكور', 'أثاث', 'مطبخ', 'مصباح']
+};
+
+function detectCategory(name, desc) {
+  const haystack = ((name || '') + ' ' + (desc || '')).toLowerCase();
+  if (!haystack.trim()) return '';
+  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    for (const kw of keywords) {
+      if (haystack.includes(kw.toLowerCase())) return cat;
+    }
+  }
+  return '';  // غير معروفة
+}
+
 function getCategoryEmoji(category) {
   if (!category) return '🛍️';
   // مطابقة مرنة: نبحث عن أي مفتاح يحتوي على كلمة الفئة أو العكس
@@ -1964,7 +2077,12 @@ function rowToDish(row) {
   const desc    = (row[SHEETDB_COL_DESCRIPTION] || '').toString().trim();
   const imgUrl  = (row[SHEETDB_COL_ETAT]        || '').toString().trim();
   const dispoRaw= (row[SHEETDB_COL_DISPONIBLE]  || 'dispo').toString().trim().toLowerCase();
-  const category= (row[GS_COL_CATEGORIE]        || row['categorie'] || row['category'] || row['فئة'] || '').toString().trim();
+  let category  = (row[GS_COL_CATEGORIE]        || row['categorie'] || row['category'] || row['فئة'] || '').toString().trim();
+
+  // اكتشاف الفئة تلقائياً من اسم المنتج ووصفه إن لم تكن موجودة في الشيت
+  if (!category) {
+    category = detectCategory(name, desc);
+  }
 
   const meta = KNOWN_DISH_META[name] || { emoji: '', badge: '', badgeType: '' };
 
@@ -2300,24 +2418,43 @@ async function renderMenu() {
   // تحديث الكاش المحلي فوراً
   saveDishesStorage(dishes);
 
-  // تطبيق فلتر الفئة الحالي
+  // تطبيق فلتر الفئة الحالي + فلتر البحث
   const activeCat = window._activeCategory || 'all';
-  const filteredDishes = (activeCat === 'all')
-    ? dishes
-    : dishes.filter(d => {
-        const dc = (d.category || '').trim();
-        // مطابقة مرنة: إما تطابق تام أو احتواء متبادل
-        return dc === activeCat || dc.includes(activeCat) || activeCat.includes(dc);
-      });
+  const searchTerm = (window._searchTerm || '').trim().toLowerCase();
+  const hasSearch = searchTerm.length > 0;
+
+  let filteredDishes = dishes;
+  // 1) فلتر الفئة
+  if (activeCat !== 'all') {
+    filteredDishes = filteredDishes.filter(d => {
+      const dc = (d.category || '').trim();
+      return dc === activeCat || dc.includes(activeCat) || activeCat.includes(dc);
+    });
+  }
+  // 2) فلتر البحث السريع (في الاسم + الوصف + الفئة)
+  if (hasSearch) {
+    filteredDishes = filteredDishes.filter(d => {
+      const name = (d.name || '').toLowerCase();
+      const desc = (d.desc || '').toLowerCase();
+      const cat  = (d.category || '').toLowerCase();
+      return name.includes(searchTerm) || desc.includes(searchTerm) || cat.includes(searchTerm);
+    });
+  }
 
   // بناء شبكة الفئات من المنتجات الفعلية (لعرض أزرار إضافية إن وجدت فئة غير افتراضية)
   refreshCategoryButtons(dishes);
 
+  // تحديث عدّاد النتائج
+  updateSearchResultsCount(filteredDishes.length, dishes.length);
+
   if (!filteredDishes.length) {
+    const message = hasSearch
+      ? `لا توجد منتجات مطابقة لـ "${escapeHtml(searchTerm)}".`
+      : `لا توجد منتجات في فئة "${escapeHtml(activeCat)}".`;
     grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-mute);">
-      <div style="font-size:48px;margin-bottom:14px;">🔍</div>
-      <p>لا توجد منتجات في فئة "${escapeHtml(activeCat)}".</p>
-      <button type="button" class="btn-ghost" style="margin-top:14px;" onclick="setActiveCategory('all')">عرض كل المنتجات</button>
+      <div style="font-size:48px;margin-bottom:14px;">${hasSearch ? '🔍' : '📦'}</div>
+      <p>${message}</p>
+      <button type="button" class="btn-ghost" style="margin-top:14px;" onclick="clearAllFilters()">${hasSearch ? 'مسح البحث' : 'عرض كل المنتجات'}</button>
     </div>`;
     return;
   }
@@ -2380,10 +2517,54 @@ function setActiveCategory(cat) {
   renderMenu();
 }
 
+/* ============ FAST SEARCH LOGIC ============ */
+let _searchDebounceTimer = null;
+function setSearchTerm(term) {
+  // تأخير بسيط (debounce) لتفادي إعادة الرسم عند كل حرف
+  clearTimeout(_searchDebounceTimer);
+  _searchDebounceTimer = setTimeout(() => {
+    window._searchTerm = term || '';
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (clearBtn) clearBtn.style.display = term ? 'grid' : 'none';
+    renderMenu();
+  }, 250);
+}
+
+function clearSearch() {
+  const input = document.getElementById('searchInput');
+  if (input) input.value = '';
+  window._searchTerm = '';
+  const clearBtn = document.getElementById('clearSearchBtn');
+  if (clearBtn) clearBtn.style.display = 'none';
+  renderMenu();
+}
+
+function clearAllFilters() {
+  // مسح البحث + إعادة الفئة إلى "الكل"
+  clearSearch();
+  setActiveCategory('all');
+}
+
+function updateSearchResultsCount(count, total) {
+  const el = document.getElementById('searchResultsCount');
+  if (!el) return;
+  const term = (window._searchTerm || '').trim();
+  const cat = window._activeCategory || 'all';
+  if (term || cat !== 'all') {
+    el.innerHTML = `<b>${count}</b> من <b>${total}</b> منتج`;
+  } else {
+    el.innerHTML = total > 0 ? `✨ ${total} منتج متوفّر` : '';
+  }
+}
+
 // إضافة أزرار ديناميكية للفئات غير الافتراضية الموجودة في الشيت
 function refreshCategoryButtons(dishes) {
   const filter = document.getElementById('categoryFilter');
   if (!filter) return;
+  // نحتفظ بالأزرار الافتراضية فقط، نحذف أي أزرار ديناميكية سابقة
+  const dynamicBtns = filter.querySelectorAll('.cat-btn-dynamic');
+  dynamicBtns.forEach(b => b.remove());
+
   const defaultCats = ['all', 'إلكترونيات', 'حواسيب', 'ملابس', 'ساعات', 'إكسسوارات', 'عطور', 'أحذية'];
   const existingCats = new Set(defaultCats);
   dishes.forEach(d => {
@@ -2391,7 +2572,7 @@ function refreshCategoryButtons(dishes) {
       existingCats.add(d.category);
       const emoji = getCategoryEmoji(d.category);
       const btn = document.createElement('button');
-      btn.className = 'cat-btn';
+      btn.className = 'cat-btn cat-btn-dynamic';
       btn.dataset.cat = d.category;
       btn.textContent = `${emoji} ${d.category}`;
       btn.addEventListener('click', () => setActiveCategory(d.category));
@@ -3553,6 +3734,7 @@ function init() {
 
   // تهيئة الفئة النشطة (افتراضياً: الكل)
   window._activeCategory = 'all';
+  window._searchTerm = '';
 
   // ربط أزرار الفئات بالفلترة
   document.querySelectorAll('.cat-btn').forEach(btn => {
@@ -3566,6 +3748,26 @@ function init() {
       if (cat) setActiveCategory(cat);
     });
   });
+
+  // ربط شريط البحث السريع
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => setSearchTerm(e.target.value));
+    // اختصار: "/" للتركيز على البحث، "Esc" لمسحه
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && document.activeElement !== searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+      } else if (e.key === 'Escape' && document.activeElement === searchInput) {
+        clearSearch();
+        searchInput.blur();
+      }
+    });
+  }
+  const clearBtn = document.getElementById('clearSearchBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', clearSearch);
+  }
 
   // عرض القائمة من شيت الأطباق (async)
   renderMenu();
