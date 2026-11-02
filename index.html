@@ -371,6 +371,38 @@
       radial-gradient(circle at 70% 70%, rgba(176,32,0,0.5), transparent 50%),
       linear-gradient(135deg, #2a1810, #0d0a08);
   }
+
+  /* ============ Hover-Zoom على صورة المنتج (طراز Amazon) ============ */
+  /* نافذة منبثقة تظهر فوراً بمجرد تحريك الماوس على الصورة لتكبير التفاصيل */
+  .dish-hover-zoom {
+    position: fixed;
+    width: 320px; height: 320px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #0a0806 center / cover no-repeat;
+    border: 2px solid var(--gold-bright);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.7), 0 0 24px rgba(212,175,55,0.35);
+    pointer-events: none;
+    z-index: 700;
+    display: none;
+    top: 0; left: 0;
+  }
+  .dish-hover-zoom.visible { display: block; }
+  .dish-hover-zoom::before {
+    content: '🔍';
+    position: absolute; top: 8px; right: 10px;
+    font-size: 16px;
+    opacity: 0.7;
+    z-index: 2;
+  }
+  /* مؤشر على الصورة عند تفعيل الـ hover-zoom */
+  .dish-img.with-hover-zoom { cursor: zoom-in; }
+  @media (max-width: 600px) {
+    .dish-hover-zoom { width: 200px; height: 200px; }
+  }
+  @media (max-width: 380px) {
+    .dish-hover-zoom { width: 170px; height: 170px; }
+  }
   .dish-badge {
     position: absolute; top: 14px; right: 14px;
     background: rgba(13,10,8,0.85); backdrop-filter: blur(8px);
@@ -381,6 +413,229 @@
     box-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
   }
   .dish-badge.hot { color: var(--turquoise); border-color: var(--turquoise); }
+
+  /* ============ ZOOM / 360° BUTTON ON PRODUCT IMAGE ============ */
+  .dish-img-btn {
+    position: absolute; bottom: 12px; left: 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(13,10,8,0.78);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    color: var(--gold-bright);
+    padding: 8px 13px; border-radius: 999px;
+    font-size: 12px; font-weight: 800;
+    border: 1px solid rgba(212, 175, 55, 0.55);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45), 0 0 12px rgba(212, 175, 55, 0.25);
+    cursor: pointer; z-index: 4;
+    transition: transform .25s ease, background .25s ease, box-shadow .25s ease;
+    user-select: none;
+  }
+  .dish-img-btn svg { width: 15px; height: 15px; }
+  .dish-img-btn:hover {
+    transform: translateY(-2px) scale(1.04);
+    background: rgba(212, 175, 55, 0.92);
+    color: #1a1a1a;
+    box-shadow: 0 8px 22px rgba(212, 175, 55, 0.5);
+  }
+  .dish-img { cursor: zoom-in; }
+
+  /* ============ IMAGE VIEWER MODAL (ZOOM + 360°) ============ */
+  .iv-overlay {
+    position: fixed; inset: 0; z-index: 800;
+    background: rgba(8, 10, 12, 0.94);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; padding: 12px;
+    animation: ivFade .3s ease;
+  }
+  .iv-overlay.active { display: flex; }
+  @keyframes ivFade { from {opacity:0;} to {opacity:1;} }
+
+  .iv-title {
+    color: var(--gold-bright); font-family: 'Cairo', sans-serif;
+    font-size: 15px; font-weight: 800; text-align: center;
+    margin-bottom: 8px; max-width: 92vw;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+    line-height: 1.3;
+  }
+  /* ============ نظام التكبير على طراز AliExpress / Amazon ============ */
+  /* حاوية أفقية: الصورة على اليمين، النافذة المنبثقة على اليسار (RTL) */
+  .iv-zoom-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    width: 100%;
+    max-width: 920px;
+    margin: 0 auto;
+  }
+  .iv-stage {
+    position: relative;
+    width: min(82vw, 70vh); height: min(82vw, 70vh);
+    max-width: 520px; max-height: 520px;
+    border-radius: 18px; overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(212,175,55,0.12), transparent 65%),
+      linear-gradient(135deg, #1a1812, #0c0a07);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05);
+    display: grid; place-items: center;
+    touch-action: none;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .iv-stage.is-grabbing { cursor: grabbing; }
+  .iv-stage:not(.is-grabbing) { cursor: zoom-in; }
+  .iv-stage.is-360 { cursor: ew-resize; }
+  .iv-stage.no-magnify { cursor: default; }
+  .iv-image {
+    max-width: 92%; max-height: 92%;
+    width: auto; height: auto;
+    object-fit: contain;
+    transform-origin: center center;
+    transition: transform .12s ease-out;
+    will-change: transform;
+    user-select: none; -webkit-user-drag: none;
+    pointer-events: none;
+    margin: auto;
+    display: block;
+  }
+  .iv-image.no-transition { transition: none; }
+  .iv-emoji {
+    font-size: 110px; line-height: 1;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.6));
+    user-select: none;
+    margin: auto;
+  }
+
+  /* ============ عدسة مربعة (Lens) على طراز Amazon/AliExpress ============ */
+  /* مربع صغير يتبع المؤشر داخل الصورة لتحديد منطقة التكبير */
+  .iv-lens {
+    position: absolute;
+    width: 120px; height: 120px;
+    border-radius: 4px;
+    border: 2px solid rgba(255,255,255,0.9);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 0 14px rgba(0,0,0,0.6);
+    pointer-events: none;
+    z-index: 10;
+    display: none;
+    background: rgba(255,255,255,0.08);
+    transform: translate(-50%, -50%);
+    transition: opacity .12s ease;
+  }
+  .iv-lens.visible { display: block; }
+  /* النافذة المنبثقة الجانبية (Preview) — تعرض المنطقة المكبّرة */
+  .iv-preview {
+    position: relative;
+    width: min(82vw, 70vh); height: min(82vw, 70vh);
+    max-width: 520px; max-height: 520px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #0a0806;
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+    display: none;
+    background-repeat: no-repeat;
+    background-position: center;
+    flex-shrink: 0;
+  }
+  .iv-preview.visible { display: block; }
+  .iv-preview-empty {
+    /* رسالة تظهر قبل التكبير */
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    color: var(--text-dim);
+    font-size: 13px; font-weight: 700;
+    text-align: center; padding: 20px;
+    pointer-events: none;
+  }
+  .iv-preview.visible .iv-preview-empty { display: none; }
+  /* على الهواتف: عدسة أصغر + النافذة تظهر فوق الصورة (overlay) */
+  @media (max-width: 900px) {
+    .iv-zoom-wrap { flex-direction: column; gap: 10px; }
+    .iv-preview {
+      position: absolute;
+      top: 8px; left: 8px;
+      width: 45%; height: 45%;
+      max-width: 220px; max-height: 220px;
+      border-radius: 12px;
+      z-index: 20;
+      opacity: 0.97;
+    }
+    .iv-lens { width: 90px; height: 90px; border-width: 2px; }
+  }
+  @media (max-width: 380px) {
+    .iv-lens { width: 76px; height: 76px; }
+    .iv-preview { width: 50%; height: 50%; }
+  }
+
+  .iv-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 14px; flex-wrap: wrap; justify-content: center;
+  }
+  .iv-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: rgba(36, 50, 64, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    border-radius: 12px;
+    padding: 10px 14px; font-size: 14px; font-weight: 800;
+    font-family: inherit; cursor: pointer;
+    transition: transform .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    min-width: 44px;
+  }
+  .iv-btn svg { width: 18px; height: 18px; }
+  .iv-btn:hover {
+    transform: translateY(-2px);
+    background: rgba(212, 175, 55, 0.92);
+    color: #1a1a1a; border-color: var(--gold);
+  }
+  .iv-btn.active {
+    background: linear-gradient(135deg, var(--turquoise), var(--turquoise-2));
+    color: #fff; border-color: var(--turquoise);
+    box-shadow: 0 6px 18px rgba(26, 188, 156, 0.45);
+  }
+  .iv-btn.close {
+    background: rgba(176,32,0,0.5); color: #ff8a3c;
+    border-color: rgba(176,32,0,0.55);
+  }
+  .iv-btn.close:hover {
+    background: rgba(176,32,0,0.85); color: #fff;
+  }
+  .iv-btn:disabled,
+  .iv-btn[hidden] {
+    display: none !important;
+  }
+  .iv-zoom-info {
+    color: var(--text-mute); font-size: 12px; font-weight: 700;
+    padding: 0 8px; min-width: 56px; text-align: center;
+  }
+
+  /* تجاوب الهواتف — أصغر ليناسب الشاشات الصغيرة */
+  @media (max-width: 600px) {
+    .iv-overlay { padding: 8px; }
+    .iv-stage { width: 78vw; height: 78vw; max-width: 340px; max-height: 340px; border-radius: 14px; }
+    .iv-image { max-width: 90%; max-height: 90%; }
+    .iv-emoji { font-size: 80px; }
+    .iv-title { font-size: 13px; margin-bottom: 6px; }
+    .iv-btn { padding: 8px 10px; font-size: 12px; min-width: 38px; border-radius: 10px; }
+    .iv-btn svg { width: 15px; height: 15px; }
+    .iv-toolbar { gap: 5px; margin-top: 10px; }
+    .dish-img-btn { font-size: 11px; padding: 7px 11px; }
+  }
+  /* هواتف صغيرة جداً */
+  @media (max-width: 380px) {
+    .iv-stage { width: 84vw; height: 84vw; max-width: 280px; max-height: 280px; }
+    .iv-emoji { font-size: 64px; }
+    .iv-btn { padding: 7px 9px; font-size: 11px; min-width: 34px; }
+    .iv-btn svg { width: 14px; height: 14px; }
+    .iv-zoom-info { font-size: 10px; min-width: 38px; padding: 0 4px; }
+  }
+
   .dish-body { padding: 20px 20px 22px; }
   .dish-name {
     font-family: 'Cairo'; font-size: 20px; font-weight: 800;
@@ -1669,7 +1924,7 @@
       <div class="feature">
         <div class="feature-icon">🚀</div>
         <h3>توصيل مضمون 24/24</h3>
-        <p>نخدمك 24 ساعة/24 و7 أيام/7. ضمان توصيل لكل الولايات الجزائرية — راحتك أولاً.</p>
+        <p>نخدمك 24 ساعة/24 و7 أيام/7. ضمان توصيل (الديس وماجاورها) — راحتك أولاً.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">✅</div>
@@ -1701,7 +1956,7 @@
     <div class="contact-wrap">
       <div class="contact-info">
         <h3>معلومات الاتصال</h3>
-        <p>سواء كنت تريد الطلب، الاستفسار عن قائمة الأطباق، أو حجز باك لعزيمة — احنا في الخدمة.</p>
+        <p>سواء كنت تريد الطلب، الاستفسار عن قائمة المبيعات — احنا في الخدمة.</p>
         <div class="contact-row">
           <div class="ic">📱</div>
           <div><b>واتساب · هاتف</b><span id="phoneDisplay" dir="ltr" style="display:inline-block;">+213 793 192 504</span></div>
@@ -1712,7 +1967,7 @@
         </div>
         <div class="contact-row">
           <div class="ic">📍</div>
-          <div><b>ضمان التوصيل</b><span>كل الولايات الجزائرية — مضمون ✓</span></div>
+          <div><b>ضمان التوصيل</b><span>كل المناطق في الديس — مضمون ✓</span></div>
         </div>
         <div class="contact-row">
           <div class="ic">🛵</div>
@@ -1761,7 +2016,7 @@
       <a href="#menu" data-cat-filter="حواسيب">حواسيب</a>
       <a href="#menu" data-cat-filter="ملابس">ملابس</a>
       <a href="#menu" data-cat-filter="ساعات">ساعات</a>
-      <a href="#menu" data-cat-filter="إكسسوارات">إكسسوارات</a>
+      <a href="#menu" data-cat-filter="ادوات اخرى"></a>
     </div>
     <div class="footer-col">
       <h4>تواصل</h4>
@@ -1773,14 +2028,52 @@
   </div>
   <div class="footer-bottom">
     <span>© 2026 CHM STORE · جميع الحقوق محفوظة</span>
-    <span>designed by CK MED</span>
+    <span>designed by CH MED</span>
   </div>
 </footer>
 
 <!-- ============ FLOATING WHATSAPP ============ -->
-<a href="https://wa.me/213793192504?text=السلام%20عليكم%20بغيت%20نطلب" target="_blank" class="floating-wa" aria-label="اطلب عبر واتساب">
+<a href="https://wa.me/213793192504?text=السلام%20عليكم%اريد تقديم 20%20 طلب" target="_blank" class="floating-wa" aria-label="اطلب عبر واتساب">
   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.515 5.255l-.999 3.648 3.973-.602zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
 </a>
+
+<!-- ============ HOVER-ZOOM على صورة المنتج (طراز Amazon) ============ -->
+<!-- نافذة منبثقة تظهر بمجرد تحريك الماوس على صورة المنتج لتكبير التفاصيل -->
+<div class="dish-hover-zoom" id="dishHoverZoom" aria-hidden="true"></div>
+
+<!-- ============ IMAGE VIEWER MODAL (ZOOM + 360°) ============ -->
+<div class="iv-overlay" id="imageViewerOverlay" role="dialog" aria-modal="true" aria-label="عارض الصور">
+  <div class="iv-title" id="ivTitle">—</div>
+  <div class="iv-zoom-wrap" id="ivZoomWrap">
+    <div class="iv-stage" id="ivStage">
+      <img class="iv-image" id="ivImage" alt="" />
+      <div class="iv-emoji" id="ivEmoji" style="display:none;font-size:140px;line-height:1;filter:drop-shadow(0 10px 30px rgba(0,0,0,0.6));user-select:none;">🛍️</div>
+      <div class="iv-lens" id="ivLens" aria-hidden="true"></div>
+    </div>
+    <div class="iv-preview" id="ivPreview" aria-hidden="true">
+      <div class="iv-preview-empty" id="ivPreviewEmpty">حرّك الماوس على الصورة لمشاهدة التفاصيل</div>
+    </div>
+  </div>
+  <div class="iv-toolbar">
+    <button type="button" class="iv-btn" id="ivZoomOut" aria-label="تصغير" title="تصغير">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <span class="iv-zoom-info" id="ivZoomInfo">100%</span>
+    <button type="button" class="iv-btn" id="ivZoomIn" aria-label="تكبير" title="تكبير">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button type="button" class="iv-btn" id="ivReset" aria-label="إعادة الضبط" title="إعادة الضبط">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 10 9 10"/></svg>
+    </button>
+    <button type="button" class="iv-btn" id="iv360" aria-label="عرض 360°" title="عرض 360°">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="10" ry="4"/><path d="M2 12v0"/><path d="M22 12c0 4-4 6-10 6"/></svg>
+      360°
+    </button>
+    <button type="button" class="iv-btn close" id="ivClose" aria-label="إغلاق" title="إغلاق">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</div>
 
 <!-- ============ CART MODAL ============ -->
 <div class="modal-overlay" id="cartModal">
@@ -2397,11 +2690,16 @@ function saveSettingsStorage(s) { localStorage.setItem('mashawi_settings', JSON.
 async function renderMenu() {
   const grid = document.getElementById('menuGrid');
   if (!grid) return;
-  // عرض شاشة تحميل مؤقتة أثناء الجلب
-  grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-mute);">
-    <div style="font-size:48px;margin-bottom:14px;">🛍️</div>
-    <p>جاري تحميل المنتجات…</p>
-  </div>`;
+  // تحقق إن كان الـ grid يحتوي على منتجات بالفعل
+  const hasExistingProducts = grid.querySelector('.dish') !== null;
+  // عرض شاشة تحميل فقط إذا كان الـ grid فارغاً (أول مرة)
+  // — هذا يمنع "الاختفاء ثم الإعادة" المزعج أثناء التحديث التلقائي
+  if (!hasExistingProducts) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-mute);">
+      <div style="font-size:48px;margin-bottom:14px;">🛍️</div>
+      <p>جاري تحميل المنتجات…</p>
+    </div>`;
+  }
   let dishes;
   try {
     dishes = await loadDishes();
@@ -2417,6 +2715,10 @@ async function renderMenu() {
   }
   // تحديث الكاش المحلي فوراً
   saveDishesStorage(dishes);
+  // تخزين قائمة المنتجات الحالية لاستخدامها في عارض الصور (الزوم / 360°)
+  window._lastRenderedDishes = dishes;
+  // تحديث بصمة البيانات لمنع إعادة بناء غير ضرورية في التحديث التلقائي
+  window._lastDishesSignature = dishes.map(d => `${d.id}:${d.name}:${d.price}:${d.available}:${d.image||''}:${d.defaultImage||''}`).join('|');
 
   // تطبيق فلتر الفئة الحالي + فلتر البحث
   const activeCat = window._activeCategory || 'all';
@@ -2480,9 +2782,13 @@ async function renderMenu() {
             </button>`;
     return `
       <article class="dish ${!isAvailable ? 'is-unavailable' : ''}" data-id="${escapeHtml(d.id)}" data-available="${isAvailable ? '1' : '0'}" data-category="${escapeHtml(d.category || '')}">
-        <div class="dish-img">
+        <div class="dish-img" onclick="openImageViewer('${escapeHtml(d.id)}')">
           ${imgHtml}
           ${badge}
+          <button type="button" class="dish-img-btn" onclick="event.stopPropagation(); openImageViewer('${escapeHtml(d.id)}');" aria-label="عرض الصورة بالتكبير">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+            عرض
+          </button>
         </div>
         <div class="dish-body">
           <h3 class="dish-name">${escapeHtml(d.name)}</h3>
@@ -3791,20 +4097,43 @@ function init() {
 
   // SheetDB: تحقق من الاتصال عند الإقلاع
   checkSheetConnection();
-  // تحديث المؤشر كل 30 ثانية
-  setInterval(checkSheetConnection, 30000);
+  // تحديث المؤشر كل 60 ثانية (بدلاً من 30 لتقليل الطلبات)
+  setInterval(checkSheetConnection, 60000);
 
-  // كل 15 ثانية، نتحقق إن كانت الأطباق قد تغيّرت في الشيت من الخارج
-  // (مثلاً: عدّل صاحب المحل الشيت يدوياً) — نعيد تحميل القائمة دون لمس المحرّر
+  // تحديث ذكي للقائمة: يتحقق فقط إن تغيّرت البيانات فعلاً قبل إعادة البناء
+  // — يمنع "الريفرش" المزعج الذي يُخفي المحتوى ثم يُعيده
+  let _autoRefreshInProgress = false;
   setInterval(async () => {
-    // لا نعيد التحميل إذا كانت لوحة الإدارة مفتوحة على تبويب الأطباق (حتى لا نُضيّع التعديلات)
+    // لا نعيد التحميل أثناء تفاعل المستخدم لتجنّب إزعاجه
     const adminOpen = document.getElementById('adminModal')?.classList.contains('active');
-    const dishesTabActive = document.querySelector('.admin-tab[data-tab="dishes"]')?.classList.contains('active');
-    if (adminOpen && dishesTabActive) return;
-    // وإلا فنعيد التحميل بهدوء
-    _dishesCache = null;
-    try { await renderMenu(); } catch (e) { console.warn('auto-refresh failed:', e); }
-  }, 15000);
+    const viewerOpen = document.getElementById('imageViewerOverlay')?.classList.contains('active');
+    const cartOpen = document.getElementById('cartModal')?.classList.contains('active');
+    if (adminOpen || viewerOpen || cartOpen) return; // المستخدم مشغول — لا تُحدّث
+    if (_autoRefreshInProgress) return; // تحديث جارٍ بالفعل
+    _autoRefreshInProgress = true;
+    try {
+      // جلب البيانات الجديدة دون مسح الكاش القديم فوراً
+      const freshDishes = await loadDishes().catch(() => null);
+      if (!freshDishes || !freshDishes.length) { _autoRefreshInProgress = false; return; }
+      // توليد بصمة للبيانات لمقارنتها بسرعة
+      const signature = freshDishes.map(d => `${d.id}:${d.name}:${d.price}:${d.available}:${d.image||''}:${d.defaultImage||''}`).join('|');
+      if (signature === window._lastDishesSignature) {
+        // البيانات لم تتغيّر — لا حاجة لإعادة البناء (منع الوميض/الريفرش)
+        _autoRefreshInProgress = false;
+        return;
+      }
+      // البيانات تغيّرت فعلاً — حدّث الكاش وأعد البناء
+      window._lastDishesSignature = signature;
+      saveDishesStorage(freshDishes);
+      window._lastRenderedDishes = freshDishes;
+      // أعد بناء القائمة فقط إذا لم يكن المستخدم يتفاعل حالياً
+      await renderMenu();
+    } catch (e) {
+      console.warn('auto-refresh failed:', e);
+    } finally {
+      _autoRefreshInProgress = false;
+    }
+  }, 120000); // كل دقيقتين (بدلاً من 15 ثانية)
 
   // عند الضغط على شارة الاتصال: فتح لوحة الإدارة على تبويب الطلبات
   const syncBadge = document.getElementById('syncBadge');
@@ -3821,6 +4150,528 @@ function init() {
     });
   }
 }
+/* ============ IMAGE VIEWER (ZOOM + 360°) ============ */
+(function () {
+  const MIN_SCALE = 1;
+  const MAX_SCALE = 5;
+  const SCALE_STEP = 0.25;
+  const WHEEL_STEP = 0.12;
+
+  const state = {
+    scale: 1,
+    tx: 0, ty: 0,
+    spinning: false,
+    is360Frames: false,     // true إذا كان المنتج يملك مجموعة صور 360°
+    frames: [],             // مصفوفة إطارات 360° (إن وجدت)
+    frameIndex: 0,
+    drag360: false,
+    lastX: 0,
+    dragging: false,
+    dragStartX: 0, dragStartY: 0,
+    startTx: 0, startTy: 0,
+  };
+
+  const overlay = document.getElementById('imageViewerOverlay');
+  const stage = document.getElementById('ivStage');
+  const img = document.getElementById('ivImage');
+  const emojiEl = document.getElementById('ivEmoji');
+  const titleEl = document.getElementById('ivTitle');
+  const zoomInfo = document.getElementById('ivZoomInfo');
+  const btnIn = document.getElementById('ivZoomIn');
+  const btnOut = document.getElementById('ivZoomOut');
+  const btnReset = document.getElementById('ivReset');
+  const btn360 = document.getElementById('iv360');
+  const btnClose = document.getElementById('ivClose');
+  const lensEl = document.getElementById('ivLens');
+  const previewEl = document.getElementById('ivPreview');
+
+  // إعدادات نظام التكبير على طراز AliExpress / Amazon
+  const LENS_ZOOM = 2.5;     // نسبة التكبير في النافذة المنبثقة
+  let lensActive = false;    // هل التكبير متاح لهذا المنتج (صورة واحدة فقط)
+  let lensHover = false;     // هل المؤشر حالياً فوق الصورة
+
+  function applyTransform() {
+    if (!img) return;
+    img.style.setProperty('--iv-scale', state.scale);
+    if (state.spinning) {
+      // عند الدوران نترك الـ animation يتولى الأمر، لكن نطبّق السكيل عبر CSS var
+      img.style.transform = '';
+    } else {
+      img.style.transform = `translate(${state.tx}px, ${state.ty}px) scale(${state.scale})`;
+    }
+    if (zoomInfo) zoomInfo.textContent = Math.round(state.scale * 100) + '%';
+    if (btnReset) btnReset.disabled = (state.scale === 1 && state.tx === 0 && state.ty === 0);
+  }
+
+  function setScale(newScale, keepCenter) {
+    const prev = state.scale;
+    state.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+    if (keepCenter && prev > 1) {
+      // إبقاء مركز التقريب ثابتًا تقريبًا
+      const ratio = state.scale / prev;
+      state.tx *= ratio;
+      state.ty *= ratio;
+    } else if (state.scale === 1) {
+      state.tx = 0; state.ty = 0;
+    }
+    // إدارة العدسة: تخفيها عند التكبير اليدوي (scale>1)، ويعيد إظهارها عند العودة ل scale=1
+    if (state.scale > 1) {
+      hideLensTemp();
+    } else if (state.scale === 1 && lensActive && lensHover) {
+      showLens();
+    }
+    applyTransform();
+  }
+
+  function zoomIn()  { setScale(state.scale + SCALE_STEP, true); }
+  function zoomOut() { setScale(state.scale - SCALE_STEP, true); }
+
+  function resetView() {
+    state.scale = 1; state.tx = 0; state.ty = 0;
+    applyTransform();
+  }
+
+  // تشغيل/إيقاف الدوران التلقائي للإطارات 360° (يستعمل فقط مع منتجات متعددة الإطارات)
+  function toggleAuto360() {
+    if (!state.is360Frames) return;
+    state.spinning = !state.spinning;
+    btn360.classList.toggle('active', state.spinning);
+    if (state.spinning) {
+      state._auto360timer && clearInterval(state._auto360timer);
+      state._auto360timer = setInterval(() => showFrame(state.frameIndex + 1), 90);
+    } else {
+      clearInterval(state._auto360timer);
+    }
+  }
+
+  function showFrame(index) {
+    if (!state.frames.length) return;
+    const n = state.frames.length;
+    state.frameIndex = ((index % n) + n) % n;
+    img.src = state.frames[state.frameIndex];
+  }
+
+  function getDishById(id) {
+    const list = window._lastRenderedDishes || [];
+    return list.find(d => String(d.id) === String(id));
+  }
+
+  function resolveMainImage(d) {
+    if (d && d.image) return d.image;
+    if (d && d.defaultImage) return d.defaultImage;
+    return '';
+  }
+
+  window.openImageViewer = function (dishId) {
+    const d = getDishById(dishId);
+    if (!d) return;
+    const mainImg = resolveMainImage(d);
+    // دعم مجموعة صور 360° إن وُجدت في الحقل images360
+    let frames = [];
+    if (Array.isArray(d.images360) && d.images360.length > 1) {
+      frames = d.images360.filter(Boolean);
+    }
+    state.is360Frames = frames.length > 1;
+    state.frames = frames;
+    state.frameIndex = 0;
+    state.spinning = false;
+    state.scale = 1; state.tx = 0; state.ty = 0;
+    state.dragging = false; state.drag360 = false;
+
+    btn360.classList.remove('active');
+    btnIn.disabled = false; btnOut.disabled = false;
+    stage.classList.toggle('is-360', state.is360Frames);
+
+    if (state.is360Frames) {
+      // منتج بصور 360° حقيقية (إطارات متعددة) — العرض الكامل
+      lensActive = false; // لا عدسة في وضع 360°
+      stage.classList.add('no-magnify');
+      hideLens();
+      img.style.display = '';
+      if (emojiEl) emojiEl.style.display = 'none';
+      showFrame(0);
+      btn360.hidden = false;
+      btnIn.hidden = false; btnOut.hidden = false;
+      if (zoomInfo) zoomInfo.style.display = '';
+    } else if (mainImg) {
+      // صورة واحدة — تُفعّل عدسة التكبير بمجرد تحريك الماوس/الإصبع
+      lensActive = true;
+      stage.classList.remove('no-magnify');
+      img.src = mainImg;
+      img.style.display = '';
+      if (emojiEl) emojiEl.style.display = 'none';
+      btn360.hidden = true;
+      btnIn.hidden = false; btnOut.hidden = false;
+      if (zoomInfo) zoomInfo.style.display = '';
+    } else {
+      // لا توجد صورة: اعرض الإيموجي كبيراً فقط — إخفاء أزرار التكبير والعدسة
+      lensActive = false;
+      stage.classList.add('no-magnify');
+      hideLens();
+      const emoji = (d && d.emoji) ? d.emoji : '🛍️';
+      img.style.display = 'none';
+      if (emojiEl) {
+        emojiEl.textContent = emoji;
+        emojiEl.style.display = '';
+      }
+      btn360.hidden = true;
+      btnIn.hidden = true; btnOut.hidden = true;
+      if (zoomInfo) zoomInfo.style.display = 'none';
+    }
+    if (titleEl) titleEl.textContent = d.name || '—';
+
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    applyTransform();
+  };
+
+  window.closeImageViewer = function () {
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+    state.spinning = false;
+    if (state._auto360timer) { clearInterval(state._auto360timer); state._auto360timer = null; }
+    btn360.classList.remove('active');
+    hideLens();
+  };
+
+  /* ============ نظام التكبير على طراز AliExpress / Amazon ============ */
+  // العدسة (lens) = مربع تحديد يتبع المؤشر داخل الصورة
+  // النافذة المنبثقة (preview) = تعرض المنطقة المُحدّدة مكبّرة بجانب الصورة
+  function showLens() {
+    if (!lensEl || !lensActive) return;
+    lensEl.classList.add('visible');
+    if (previewEl) previewEl.classList.add('visible');
+    updatePreviewBg();
+  }
+  function hideLens() {
+    if (!lensEl) return;
+    lensEl.classList.remove('visible');
+    if (previewEl) previewEl.classList.remove('visible');
+    lensHover = false;
+  }
+  // إخفاء مؤقت دون تغيير lensHover (لإعادة الإظهار بعد انتهاء السحب)
+  function hideLensTemp() {
+    if (!lensEl) return;
+    lensEl.classList.remove('visible');
+    if (previewEl) previewEl.classList.remove('visible');
+  }
+  // ضبط صورة خلفية النافذة المنبثقة (preview)
+  function updatePreviewBg() {
+    if (!previewEl || !img || !img.src || img.style.display === 'none') return;
+    previewEl.style.backgroundImage = `url("${img.src}")`;
+  }
+  // تحريك مربع التحديد (lens) وتحديث النافذة المنبثقة (preview)
+  function moveLens(clientX, clientY) {
+    if (!lensEl || !lensActive || !lensHover) return;
+    const imgRect = img.getBoundingClientRect();
+    // موضع المؤشر بالنسبة للصورة (نسبة 0..1)
+    let rx = (clientX - imgRect.left) / (imgRect.width || 1);
+    let ry = (clientY - imgRect.top) / (imgRect.height || 1);
+    // قصر القيم داخل حدود الصورة
+    rx = Math.max(0, Math.min(1, rx));
+    ry = Math.max(0, Math.min(1, ry));
+    // موضع العدسة داخل الـ stage (translate(-50%,-50%) يضع مركزها في النقطة)
+    const stageRect = stage.getBoundingClientRect();
+    const lensX = clientX - stageRect.left;
+    const lensY = clientY - stageRect.top;
+    lensEl.style.left = lensX + 'px';
+    lensEl.style.top = lensY + 'px';
+    // تحديث خلفية النافذة المنبثقة لتعرض المنطقة المكبّرة
+    if (previewEl && img.src) {
+      const prevRect = previewEl.getBoundingClientRect();
+      const prevW = prevRect.width || 320;
+      const prevH = prevRect.height || 320;
+      // حجم الصورة المكبّرة داخل النافذة = previewSize * LENS_ZOOM
+      const bgW = prevW * LENS_ZOOM;
+      const bgH = prevH * LENS_ZOOM;
+      previewEl.style.backgroundSize = `${bgW}px ${bgH}px`;
+      // إزاحة الخلفية بحيث تظهر المنطقة المُشار إليها في وسط النافذة
+      const bgPosX = -(rx * bgW - prevW / 2);
+      const bgPosY = -(ry * bgH - prevH / 2);
+      previewEl.style.backgroundPosition = `${bgPosX}px ${bgPosY}px`;
+    }
+  }
+
+  // أحداث الماوس (سطح المكتب)
+  stage && stage.addEventListener('mouseenter', () => {
+    if (!lensActive) return;
+    if (state.scale > 1) return; // العدسة تظهر فقط عند scale = 1 (لا تكبير يدوي)
+    lensHover = true;
+    showLens();
+  });
+  stage && stage.addEventListener('mouseleave', () => {
+    hideLens();
+  });
+  // mousemove يُستعمل لتحريك العدسة فقط عندما لا يكون المستخدم يسحب ول scale = 1
+  stage && stage.addEventListener('mousemove', (e) => {
+    if (!lensActive) return;
+    if (state.scale > 1) { hideLensTemp(); return; } // لا عدسة عند التكبير اليدوي
+    if (state.dragging) return; // لا عدسة أثناء السحب
+    if (!lensHover) { lensHover = true; showLens(); }
+    moveLens(e.clientX, e.clientY);
+  });
+
+  // أحداث اللمس (هاتف): العدسة تظهر بمجرد لمس الصورة وتتحرك مع الإصبع
+  stage && stage.addEventListener('touchstart', (e) => {
+    if (!lensActive) return;
+    if (e.touches.length !== 1) return;
+    if (state.scale > 1) return; // لا عدسة عند التكبير اليدوي
+    lensHover = true;
+    showLens();
+    const t = e.touches[0];
+    moveLens(t.clientX, t.clientY);
+  }, { passive: true });
+  stage && stage.addEventListener('touchmove', (e) => {
+    if (!lensActive || !lensHover) return;
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    moveLens(t.clientX, t.clientY);
+  }, { passive: true });
+  stage && stage.addEventListener('touchend', () => {
+    hideLens();
+  }, { passive: true });
+  stage && stage.addEventListener('touchcancel', () => {
+    hideLens();
+  }, { passive: true });
+
+  // عند تحميل صورة جديدة، حدّث خلفية العدسة
+  img && img.addEventListener('load', () => { if (lensHover) updatePreviewBg(); });
+
+  // ربط الأزرار
+  btnIn && btnIn.addEventListener('click', zoomIn);
+  btnOut && btnOut.addEventListener('click', zoomOut);
+  btnReset && btnReset.addEventListener('click', resetView);
+  btn360 && btn360.addEventListener('click', toggleAuto360);
+  btnClose && btnClose.addEventListener('click', window.closeImageViewer);
+
+  // إغلاق عند النقر على الخلفية
+  overlay && overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) window.closeImageViewer();
+  });
+
+  // ESC للإغلاق
+  document.addEventListener('keydown', (e) => {
+    if (!overlay.classList.contains('active')) return;
+    if (e.key === 'Escape') window.closeImageViewer();
+    else if (e.key === '+' || e.key === '=') zoomIn();
+    else if (e.key === '-' || e.key === '_') zoomOut();
+    else if (e.key === '0') resetView();
+  });
+
+  // التكبير بعجلة الفأرة
+  stage && stage.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? WHEEL_STEP : -WHEEL_STEP;
+    setScale(state.scale + delta, true);
+  }, { passive: false });
+
+  // السحب للتنقل (pan) أو للتدوير 360° (إطارات حقيقية فقط)
+  // ملاحظة: لا يُفعّل السحب إلا عند scale > 1 (صورة مكبّرة) لمنع تحرّك الصورة
+  // أثناء استخدام العدسة المكبرة بمجرد تحريك الماوس على الصورة.
+  let pointerDownActive = false;
+  function pointerDown(e) {
+    // إذا كانت العدسة نشطة وكان المستخدم ينقر بسيطاً (لم يكبّر الصورة بعد)،
+    // لا نبدأ السحب — العدسة تتكفّل بالأمر.
+    if (lensActive && state.scale <= 1) {
+      pointerDownActive = false;
+      return;
+    }
+    pointerDownActive = true;
+    state.dragging = true;
+    state.drag360 = state.is360Frames;
+    state.lastX = e.clientX;
+    state.dragStartX = e.clientX;
+    state.dragStartY = e.clientY;
+    state.startTx = state.tx;
+    state.startTy = state.ty;
+    stage.classList.add('is-grabbing');
+    // إخفاء العدسة مؤقتاً أثناء السحب لمنع التداخل البصري
+    if (lensHover) hideLensTemp();
+    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+  function pointerMove(e) {
+    if (!state.dragging || !pointerDownActive) return;
+    const dx = e.clientX - state.dragStartX;
+    if (state.drag360) {
+      // منتج 360° حقيقي: كل حركة أفقية تنتقل لإطار جديد
+      const step = 24; // كل 24px = إطار
+      const moved = Math.round((e.clientX - state.lastX) / step);
+      if (moved !== 0) {
+        showFrame(state.frameIndex - moved);
+        state.lastX = e.clientX;
+      }
+    } else {
+      if (state.scale > 1) {
+        state.tx = state.startTx + dx;
+        state.ty = state.startTy + (e.clientY - state.dragStartY);
+        applyTransform();
+      }
+    }
+  }
+  function pointerUp(e) {
+    const wasDragging = state.dragging;
+    state.dragging = false;
+    pointerDownActive = false;
+    state.drag360 = false;
+    stage.classList.remove('is-grabbing');
+    try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+    // إعادة إظهار العدسة بعد انتهاء السحب إذا كان المؤشر لا يزال فوق الصورة
+    if (wasDragging && lensActive) {
+      setTimeout(() => { if (lensHover) showLens(); }, 50);
+    }
+  }
+  stage && stage.addEventListener('pointerdown', pointerDown);
+  stage && stage.addEventListener('pointermove', pointerMove);
+  window.addEventListener('pointerup', pointerUp);
+  window.addEventListener('pointercancel', pointerUp);
+
+  // لمس مزدوج على الموبايل = تكبير سريع
+  stage && stage.addEventListener('dblclick', () => {
+    if (state.is360Frames && state.spinning) return;
+    if (state.scale > 1) resetView();
+    else setScale(2.5, false);
+  });
+})();
+
+/* ============ HOVER-ZOOM على صور المنتجات (طراز Amazon) ============ */
+/* بمجرد تحريك الماوس على صورة المنتج تظهر تفاصيلها مكبّرة تلقائياً */
+(function () {
+  const hoverZoom = document.getElementById('dishHoverZoom');
+  if (!hoverZoom) return;
+  const HOVER_ZOOM_SCALE = 2.6;   // نسبة التكبير
+  let currentImg = null;          // الصورة الحالية المعروضة
+  let hoverTimer = null;          // مؤجّل لإظهار النافذة (يمنع الوميض)
+  let lastClientX = 0, lastClientY = 0;
+  let moveScheduled = false;      // تقييد تحديث موضع النافذة (throttle)
+  let attachDone = false;         // منع تكرار ربط الأحداث
+  let scrollTimer = null;
+
+  // إظهار النافذة المنبثقة بجانب الصورة
+  function showHoverZoom(imgEl, clientX, clientY) {
+    const src = imgEl.src || imgEl.currentSrc || '';
+    if (!src) return;
+    currentImg = imgEl;
+    hoverZoom.style.backgroundImage = `url("${src}")`;
+    const iw = imgEl.naturalWidth || imgEl.width || 1;
+    const ih = imgEl.naturalHeight || imgEl.height || 1;
+    hoverZoom.style.backgroundSize = `${iw * HOVER_ZOOM_SCALE}px ${ih * HOVER_ZOOM_SCALE}px`;
+    positionAndFocus(clientX, clientY);
+    hoverZoom.classList.add('visible');
+  }
+
+  // تحديد موضع النافذة وتحديث منطقة التكبير حسب موضع الماوس
+  function positionAndFocus(clientX, clientY) {
+    if (!currentImg) return;
+    const imgRect = currentImg.getBoundingClientRect();
+    const iw = currentImg.naturalWidth || currentImg.width || 1;
+    const ih = currentImg.naturalHeight || currentImg.height || 1;
+    let rx = (clientX - imgRect.left) / (imgRect.width || 1);
+    let ry = (clientY - imgRect.top) / (imgRect.height || 1);
+    rx = Math.max(0, Math.min(1, rx));
+    ry = Math.max(0, Math.min(1, ry));
+    const zw = hoverZoom.offsetWidth || 320;
+    const zh = hoverZoom.offsetHeight || 320;
+    let zx, zy;
+    const rightOfImage = imgRect.right + 8;
+    const leftOfImage = imgRect.left - zw - 8;
+    const aboveImage = imgRect.top - zh - 8;
+    const belowImage = imgRect.bottom + 8;
+    const centerY = clientY - zh / 2;
+    function clampX(v) { return Math.max(8, Math.min(v, window.innerWidth - zw - 8)); }
+    function clampY(v) { return Math.max(8, Math.min(v, window.innerHeight - zh - 8)); }
+    if (rightOfImage + zw <= window.innerWidth - 8) {
+      zx = rightOfImage; zy = clampY(centerY);
+    } else if (leftOfImage >= 8) {
+      zx = leftOfImage; zy = clampY(centerY);
+    } else if (aboveImage >= 8) {
+      zx = clampX(imgRect.left + (imgRect.width - zw) / 2); zy = aboveImage;
+    } else if (belowImage + zh <= window.innerHeight - 8) {
+      zx = clampX(imgRect.left + (imgRect.width - zw) / 2); zy = belowImage;
+    } else {
+      zx = clampX(clientX + 24); zy = clampY(centerY);
+    }
+    hoverZoom.style.left = zx + 'px';
+    hoverZoom.style.top = zy + 'px';
+    const bgPosX = -(rx * iw * HOVER_ZOOM_SCALE - zw / 2);
+    const bgPosY = -(ry * ih * HOVER_ZOOM_SCALE - zh / 2);
+    hoverZoom.style.backgroundPosition = `${bgPosX}px ${bgPosY}px`;
+  }
+
+  function hideHoverZoom() {
+    hoverZoom.classList.remove('visible');
+    currentImg = null;
+    if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+    moveScheduled = false;
+  }
+
+  // تقييد تحديث الموضع عبر requestAnimationFrame (يمنع الإفراط في الإعادة الرسم)
+  function scheduleMove(clientX, clientY) {
+    lastClientX = clientX;
+    lastClientY = clientY;
+    if (moveScheduled) return;
+    moveScheduled = true;
+    requestAnimationFrame(() => {
+      moveScheduled = false;
+      if (currentImg) positionAndFocus(lastClientX, lastClientY);
+    });
+  }
+
+  // تفويض الأحداث على شبكة المنتجات — يُربط مرة واحدة فقط
+  function attachHoverZoom() {
+    if (attachDone) return;
+    const grid = document.getElementById('menuGrid');
+    if (!grid) return;
+    attachDone = true;
+
+    grid.addEventListener('mouseover', (e) => {
+      const dishImg = e.target.closest('.dish-img');
+      if (!dishImg) return;
+      const imgEl = dishImg.querySelector('img');
+      if (!imgEl) return;
+      if (currentImg === imgEl) return; // نفس الصورة
+      if (hoverTimer) clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(() => showHoverZoom(imgEl, e.clientX, e.clientY), 80);
+    });
+
+    grid.addEventListener('mousemove', (e) => {
+      if (!currentImg) return;
+      scheduleMove(e.clientX, e.clientY);
+    });
+
+    grid.addEventListener('mouseout', (e) => {
+      const dishImg = e.target.closest('.dish-img');
+      if (!dishImg) return;
+      const related = e.relatedTarget;
+      if (!related || !dishImg.contains(related)) {
+        hideHoverZoom();
+      }
+    });
+
+    grid.addEventListener('mouseleave', hideHoverZoom);
+  }
+
+  // التهيئة بعد تحميل الصفحة (مرة واحدة فقط)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(attachHoverZoom, 300));
+  } else {
+    setTimeout(attachHoverZoom, 300);
+  }
+
+  // إخفاء عند التمرير (مع تقييد لمنع الإفراط)
+  window.addEventListener('scroll', () => {
+    if (!currentImg) return;
+    if (scrollTimer) return;
+    scrollTimer = setTimeout(() => {
+      scrollTimer = null;
+      if (currentImg) hideHoverZoom();
+    }, 100);
+  }, { passive: true });
+
+  // إخفاء عند تغيير حجم النافذة
+  window.addEventListener('resize', () => {
+    if (currentImg) hideHoverZoom();
+  }, { passive: true });
+})();
 init();
 </script>
 </body>
